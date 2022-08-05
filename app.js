@@ -1,16 +1,16 @@
 // Express tutorial: https://www.tutorialsteacher.com/nodejs/expressjs-web-application
 
+const fetch = require('node-fetch');
+const haversine = require('haversine-distance');
 var express = require('express');
 var app = express();
+
 
 // Microservice formatting from https://github.com/AaronTrinh/Geocoding-Microservice/blob/main/client.js 
 const zmq = require('zeromq');
 // Socket to talk to the server.
 console.log("Connecting to Geocoding server...");
 const requester = zmq.socket('req');
-
-// urllib usage from https://www.npmjs.com/package/urllib
-const { request } = require('urllib');
 
 
 var bodyParser = require("body-parser");
@@ -30,18 +30,17 @@ app.post('/searchresults', function (req, res) {
     console.log(searchRadius, enterLocation)
 
         // Send request to microservice server.
-        // String: Can be an address, zip code, city, etc.
-        // This can be modified to send a variable holding the zip code entered by the user.
         requester.send(enterLocation.toString());
 
         // Receive reply from the server.
-        // Currently outputs the response to the console.
-        // Can be modified to save the result to a variable.
         let result;
         requester.on("message", function (reply) {
-        console.log("Received reply", ": [", reply.toString(), ']');
         result = reply.toString();
+
+        findmatches(result) 
+
         });
+
 
         // Set up server connection.
         requester.connect("tcp://localhost:5555");
@@ -57,3 +56,38 @@ app.post('/searchresults', function (req, res) {
 var server = app.listen(3000, function () {
     console.log('Node server is running..');
 });
+
+
+function findmatches(latlongresult){
+
+    // Read data into variables. 
+    // For each park, check distance
+    var splitString = latlongresult.split(", ")
+    var lat1 = parseFloat(splitString[0])
+    var long1 = parseFloat(splitString[1])
+
+
+    // JSON file reading adapted from Fetch API documentation: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+    fetch('https://developer.nps.gov/api/v1/parks', {
+    headers: {
+        'accept': 'application/json',
+        'Authorization':'dqWgodPXhWoWgjtfThhrw6RHocpkb79IF7M3d2BH'
+    }})
+        .then((response) => console.log(response))
+        .then((data) => console.log(data));
+
+    var lat2 = 0 
+    var long2 = 0
+
+    checkdistance(lat1, long1, lat2, long2) 
+
+};
+
+function checkdistance(lat1, long1, lat2, long2){
+  
+    // Haversine formula library from https://www.npmjs.com/package/haversine-distance 
+    const a = [lat1, long1]
+    const b = [lat2, long2]
+     
+    distanceInMiles = console.log(haversine(a, b)/1609.344) // distance between points in miles
+};
