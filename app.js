@@ -3,6 +3,9 @@ const fetch = require('node-fetch');
 const haversine = require('haversine-distance');
 var express = require('express');
 var app = express();
+app.set('view engine', 'ejs');
+
+
 
 /// Microservice formatting from https://github.com/AaronTrinh/Geocoding-Microservice/blob/main/client.js 
 const zmq = require('zeromq');
@@ -23,17 +26,16 @@ var bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/', function (req, res) {
-    res.sendFile(__dirname + '/index.html');
+    res.render(__dirname + '/views/index.ejs');
 });
 
 app.get('/about', function (req, res) {
-    res.sendFile(__dirname + '/about.html');
+    res.render(__dirname + '/views/about.ejs');
 });
 
 app.post('/searchresults', function (req, res) {  
     const enterLocation = req.body.enterLocation; 
     const searchRadius = req.body.searchRadius;
-    console.log(searchRadius, enterLocation)
 
      // Send request to microservice server.
      requester.send(enterLocation.toString());
@@ -48,10 +50,10 @@ app.post('/searchresults', function (req, res) {
 
         var lat1 = latLong[1]
         var long1 = latLong[0]
+
     
         // Fetch API NPS data and find matches
-        const matches = findMatches(lat1, long1, searchRadius)
-        res.sendFile(__dirname + '/searchresults.html')
+        const matches = findMatches(lat1, long1, searchRadius, res)
 
 
     });
@@ -77,11 +79,11 @@ function parseLatLongString(latLongResult){
 
 
 
-function findMatches(lat1, long1, searchRadius){
+function findMatches(lat1, long1, searchRadius, res){
 
     // Received extremeley helpful advice and user-agent header from https://www.jeyr.dev/posts/nps-api-403-error 
     // JSON file reading adapted from Fetch API documentation: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
-    fetch('https://developer.nps.gov/api/v1/parks?api_key=dqWgodPXhWoWgjtfThhrw6RHocpkb79IF7M3d2BH', {
+    fetch("https://developer.nps.gov/api/v1/parks?limit=600&api_key=dqWgodPXhWoWgjtfThhrw6RHocpkb79IF7M3d2BH", {
         headers: {
             'accept': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36'
@@ -104,6 +106,7 @@ function findMatches(lat1, long1, searchRadius){
                     var lat2 = splitString[0]
                     var long2 = splitString[1]
 
+
                     var splitLat2 = lat2.split(":")
                     var splitLong2 = long2.split(":")
                     
@@ -111,18 +114,20 @@ function findMatches(lat1, long1, searchRadius){
                     long2 = parseFloat(splitLong2[1])
 
                     const distance = checkdistance(lat1, long1, lat2, long2, searchRadius)
-
+                    
                     if(distance != false) {
                         matches.push({
                             "fullName": data["data"][eachPark]["fullName"],
                             "description":  data["data"][eachPark]["description"],
                             "directionsInfo": data["data"][eachPark]["directionsInfo"],
-                            "distanceToPark": distance
+                            "distanceToPark": distance,
+                            "imageURL": data["data"][eachPark]["images"][0]["url"]
                         }) 
                     }
+
                 }
                 console.log(matches)
-                return(matches)
+                res.render(__dirname + '/views/searchresults.ejs', {matches: matches});
             });
 
 };
@@ -130,8 +135,8 @@ function findMatches(lat1, long1, searchRadius){
 function checkdistance(lat1, long1, lat2, long2, searchRadius){
   
     // Haversine formula library from https://www.npmjs.com/package/haversine-distance 
-    const a = [lat1, long1]
-    const b = [lat2, long2]
+    const a = {latitude: lat1, longitude: long1}
+    const b = {latitude: lat2, longitude: long2}
      
     distanceInMiles = haversine(a, b)/1609.344; // distance between points in miles
 
