@@ -4,7 +4,7 @@ const haversine = require('haversine-distance');
 var express = require('express');
 var app = express();
 app.set('view engine', 'ejs');
-
+var matches = []
 
 
 /// Microservice formatting from https://github.com/AaronTrinh/Geocoding-Microservice/blob/main/client.js 
@@ -26,14 +26,14 @@ var bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/', function (req, res) {
-    res.render(__dirname + '/views/index.ejs');
+    return res.render(__dirname + '/views/index.ejs');
 });
 
 app.get('/about', function (req, res) {
-    res.render(__dirname + '/views/about.ejs');
+    return res.render(__dirname + '/views/about.ejs');
 });
 
-app.post('/searchresults', function (req, res) {  
+app.post('/searchresults', function (req, res, error) {  
     const enterLocation = req.body.enterLocation; 
     const searchRadius = req.body.searchRadius;
 
@@ -42,20 +42,19 @@ app.post('/searchresults', function (req, res) {
 
     // Receive reply from the server.
     var result;
+    var lat1;
+    var lat2l
     requester.on("message", function (reply) {
         result = reply.toString();
 
         // Parse the lat/long to 2 variables 
         var latLong = parseLatLongString(result)
 
-        var lat1 = latLong[1]
-        var long1 = latLong[0]
+        lat1 = latLong[1]
+        long1 = latLong[0]
 
-    
         // Fetch API NPS data and find matches
-        const matches = findMatches(lat1, long1, searchRadius, res)
-
-
+        findMatches(lat1, long1, searchRadius, res)        
     });
        
 });
@@ -79,7 +78,9 @@ function parseLatLongString(latLongResult){
 
 
 
-function findMatches(lat1, long1, searchRadius, res){
+async function findMatches(lat1, long1, searchRadius, res){
+
+    matches = []
 
     // Received extremeley helpful advice and user-agent header from https://www.jeyr.dev/posts/nps-api-403-error 
     // JSON file reading adapted from Fetch API documentation: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
@@ -91,7 +92,7 @@ function findMatches(lat1, long1, searchRadius, res){
             .then((response) => response.json())
             .then((data) => {
 
-                var matches = []
+                var foundMatches = false
 
                 // for each park in parkslist, if distance matches input, add to dictionary
                 // data["data"][eachpark]["addresses"][0]["postalCode"]
@@ -99,7 +100,7 @@ function findMatches(lat1, long1, searchRadius, res){
                 for(eachPark in data["data"]) {
                     parkLatLong = data["data"][eachPark]["latLong"]
 
-
+                    
 
                     // Parse the lat/long to 2 variables 
                     var splitString = parkLatLong.split(", ")
@@ -126,10 +127,9 @@ function findMatches(lat1, long1, searchRadius, res){
                     }
 
                 }
-                console.log(matches)
-                res.render(__dirname + '/views/searchresults.ejs', {matches: matches});
-            });
+            res.render(__dirname + '/views/searchresults.ejs', {matches: matches}) 
 
+            });
 };
 
 function checkdistance(lat1, long1, lat2, long2, searchRadius){
