@@ -127,7 +127,7 @@ function addMatch(matches, data, eachPark, distance){
         "description": data["data"][eachPark]["description"],
         "directionsInfo": data["data"][eachPark]["directionsInfo"],
         "distanceToPark": distance,
-        "imageURL": data["data"][eachPark]["images"][0]["url"]
+        "URL": data["data"][eachPark]["url"]
     })
 
     return
